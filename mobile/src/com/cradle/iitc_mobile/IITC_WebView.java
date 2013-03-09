@@ -31,7 +31,7 @@ public class IITC_WebView extends WebView {
 			}
 		});
 
-		webclient = new IITC_WebViewClient();
+		webclient = new IITC_WebViewClient(getContext());
 		this.setWebViewClient(webclient);
 	}
 
