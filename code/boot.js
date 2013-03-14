@@ -1,5 +1,4 @@
 
-
 // SETUP /////////////////////////////////////////////////////////////
 // these functions set up specific areas after the boot function
 // created a basic framework. All of these functions should only ever
@@ -54,18 +53,34 @@ window.setupLayerChooserSelectOne = function() {
   $('.leaflet-control-layers-overlays').on('click taphold', 'label', function(e) {
     if(!e) return;
     if(!(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.type === 'taphold')) return;
+    var m = window.map;
 
-    var isChecked = $(this).find('input').is(':checked');
+    var add = function(layer) {
+      if(!m.hasLayer(layer.layer)) m.addLayer(layer.layer);
+    };
+    var rem = function(layer) {
+      if(m.hasLayer(layer.layer)) m.removeLayer(layer.layer);
+    };
+
+    var isChecked = $(e.target).find('input').is(':checked');
     var checkSize = $('.leaflet-control-layers-overlays input:checked').length;
     if((isChecked && checkSize === 1) || checkSize === 0) {
       // if nothing is selected or the users long-clicks the only
       // selected element, assume all boxes should be checked again
-      $('.leaflet-control-layers-overlays input:not(:checked)').click();
+      $.each(window.layerChooser._layers, function(ind, layer) {
+        if(!layer.overlay) return true;
+        add(layer);
+      });
     } else {
       // uncheck all
-      $('.leaflet-control-layers-overlays input:checked').click();
-      $(this).find('input').click();
+      var keep = $.trim($(e.target).text());
+      $.each(window.layerChooser._layers, function(ind, layer) {
+        if(layer.overlay !== true) return true;
+        if(layer.name === keep) { add(layer);  return true; }
+        rem(layer);
+      });
     }
+    e.preventDefault();
   });
 }
 
@@ -88,10 +103,10 @@ window.setupStyles = function() {
 window.setupMap = function() {
   $('#map').text('');
 
-  var osmOpt = {attribution: 'Map data © OpenStreetMap contributors', maxZoom: 18};
+  var osmOpt = {attribution: 'Map data © OpenStreetMap contributors', maxZoom: 18, detectRetina: true};
   var osm = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', osmOpt);
 
-  var cmOpt = {attribution: 'Map data © OpenStreetMap contributors, Imagery © CloudMade', maxZoom: 18};
+  var cmOpt = {attribution: 'Map data © OpenStreetMap contributors, Imagery © CloudMade', maxZoom: 18, detectRetina: true};
   var cmMin = new L.TileLayer('http://{s}.tile.cloudmade.com/654cef5fd49a432ab81267e200ecc502/22677/256/{z}/{x}/{y}.png', cmOpt);
   var cmMid = new L.TileLayer('http://{s}.tile.cloudmade.com/654cef5fd49a432ab81267e200ecc502/999/256/{z}/{x}/{y}.png', cmOpt);
 

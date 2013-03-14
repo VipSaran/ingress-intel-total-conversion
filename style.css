@@ -4,6 +4,7 @@ html, body, #map {
   height: 100%;
   width: 100%;
   overflow: hidden; /* workaround for #373 */
+  background: #0e3d4e;
 }
 
 body {
@@ -20,6 +21,7 @@ body {
   width: 340px;
   bottom: 45px;
   z-index: 1001;
+  pointer-events: none;
 }
 
 #sidebar {
@@ -33,6 +35,7 @@ body {
   overflow-y:scroll;
   overflow-x:hidden;
   z-index: 3000;
+  pointer-events: auto;
 }
 
 #sidebartoggle {
@@ -49,6 +52,7 @@ body {
   border-right: none;
   border-radius: 5px 0 0 5px;
   text-decoration: none;
+  right: 301px; /* overwritten later by the script with SIDEBAR_WIDTH */
 }
 
 .enl {
@@ -97,10 +101,11 @@ a:hover {
 /* field mu count */
 .fieldmu {
   color: #FFCE00;
-  font-size:13px;
+  font-size: 13px;
   font-family: "coda",arial,helvetica,sans-serif; /*override leaflet-container */
   text-align: center;
   text-shadow: 0 0 0.2em black, 0 0 0.2em black, 0 0 0.2em black;
+  pointer-events: none;
 }
 
 

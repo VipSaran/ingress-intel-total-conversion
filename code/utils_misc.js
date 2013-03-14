@@ -107,11 +107,23 @@ window.rangeLinkClick = function() {
 }
 
 window.showPortalPosLinks = function(lat, lng) {
-  var qrcode = '<div id="qrcode"></div>';
-  var script = '<script>$(\'#qrcode\').qrcode({text:\'GEO:'+lat+','+lng+'\'});</script>';
-  var gmaps = '<a href="https://maps.google.com/?q='+lat+','+lng+'">gmaps</a>';
-  var osm = '<a href="http://www.openstreetmap.org/?mlat='+lat+'&mlon='+lng+'&zoom=16">OSM</a>';
-  alert('<div style="text-align: center;">' + qrcode + script + gmaps + ' ' + osm + '</div>');
+  if (typeof android !== 'undefined' && android && android.intentPosLink) {
+    android.intentPosLink('https://maps.google.com/?q='+lat+','+lng);
+  } else {
+    var qrcode = '<div id="qrcode"></div>';
+    var script = '<script>$(\'#qrcode\').qrcode({text:\'GEO:'+lat+','+lng+'\'});</script>';
+    var gmaps = '<a href="https://maps.google.com/?q='+lat+','+lng+'">gmaps</a>';
+    var osm = '<a href="http://www.openstreetmap.org/?mlat='+lat+'&mlon='+lng+'&zoom=16">OSM</a>';
+    alert('<div style="text-align: center;">' + qrcode + script + gmaps + ' ' + osm + '</div>');
+  }
+}
+
+window.androidCopy = function(text) {
+  if(typeof android === 'undefined' || !android || !android.copy)
+    return true; // i.e. execute other actions
+  else
+    android.copy(text);
+  return false;
 }
 
 window.reportPortalIssue = function(info) {

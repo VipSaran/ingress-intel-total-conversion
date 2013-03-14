@@ -1,23 +1,89 @@
 package com.cradle.iitc_mobile;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 
 import android.content.Context;
 import android.net.http.SslError;
-import android.util.Log;
-import android.webkit.CookieManager;
 import android.webkit.SslErrorHandler;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 public class IITC_WebViewClient extends WebViewClient {
+	private static final ByteArrayInputStream style = new ByteArrayInputStream(
+		"body, #dashboard_container, #map_canvas { background: #000 !important; }".getBytes());
+	private static final ByteArrayInputStream empty = new ByteArrayInputStream("".getBytes());
 
 	private Context ctx;
+	private WebResourceResponse iitcjs;
 
-	public IITC_WebViewClient(Context ctx) {
-		super();
-		this.ctx = ctx;
+	public IITC_WebViewClient(Context c) {
+		this.ctx = c;
+		try {
+			loadIITC_JS(c);
+		} catch(IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void loadIITC_JS(Context c) throws java.io.IOException {
+
+			StringBuilder sb = new StringBuilder();
+
+			sb.append(getFile("iitc-debug.user.js"));
+
+			String[] assets = ctx.getAssets().list("");
+			for (int i = 0; i < assets.length; i += 1) {
+				if (!assets[i].equals("iitc-debug.user.js") && assets[i].substring(assets[i].length() - 3).equals(".js")) {
+					sb.append("\n");
+					// FIXME: setTimeout solves just about everything when it comes to js
+					sb.append("window.setTimeout(function() {");
+					sb.append(getFile(assets[i]));
+					sb.append("}, 100);");
+				}
+			}
+
+			// need to wrap the mobile iitc.js version in a document ready. IITC
+			// expects to be injected after the DOM has been loaded completely.
+			// Since the mobile client injects IITC by replacing the gen_dashboard
+			// file, IITC runs to early. The document.ready delays IITC long enough
+			// so it boots correctly.
+			//js = "$(document).ready(function(){" + js + "});";
+			String js = "$(document).ready(function(){" + sb.toString() + "});";
+
+			iitcjs = new WebResourceResponse(
+				"text/javascript",
+				"UTF-8",
+				new ByteArrayInputStream(js.getBytes())
+			);
+	};
+
+	private String getFile(String fileName) {
+		StringBuilder sb = new StringBuilder();
+		BufferedReader br = null;
+		try {
+			br = new BufferedReader(new InputStreamReader(ctx.getAssets().open(fileName)));
+			String line = "";
+			Integer i = 0;
+			while ((line = br.readLine()) != null) {
+				sb.append(line).append("\n");
+				i += 1;
+			}
+		} catch(Exception e) {
+			e.printStackTrace();
+		} finally {
+			if (br != null) {
+				try {
+					br.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return sb.toString();
 	}
 
 	// enable https
@@ -26,61 +92,27 @@ public class IITC_WebViewClient extends WebViewClient {
 		handler.proceed() ;
 	};
 
-	// injecting IITC when page is loaded
+	// Check every external resource if itfs okay to load it and maybe replace it
+	// with our own content. This is used to block loading Niantic resources
+	// which arenft required and to inject IITC early into the site.
+	// via http://stackoverflow.com/a/8274881/1684530
 	@Override
-	public void onPageFinished(WebView web, String Url) {
-		Log.d("loading finish", web.getUrl());
-		if (web.getUrl().contains("ingress.com/intel") && !web.getUrl().contains("accounts")) {
-			// first check for cookies, than inject javascript
-			// this enables the user to login if necessary
-			CookieManager cm = CookieManager.getInstance();
-			final String cookie = cm.getCookie("https://www.ingress.com/intel");
-
-			if(cookie != null) {
-
-				// add iitc
-				addJs(web, "iitc-debug.user.js", 0);
-
-				// plugins
-				addJs(web, "show-portal-weakness.user.js", 100);
-				addJs(web, "guess-player-levels.user.js", 100);
-				addJs(web, "player-tracker.user.js", 100);
-				addJs(web, "reso-energy-pct-in-portal-detail.user.js", 100);
-				addJs(web, "show-address.user.js", 100);
-				addJs(web, "compute-ap-stats.user.js", 100);
-
-			}
+	public WebResourceResponse shouldInterceptRequest (final WebView view, String url) {
+		if(url.contains("/css/common.css")) {
+			return new WebResourceResponse("text/css", "UTF-8", style);
+		} else if(url.contains("gen_dashboard.js")) {
+			return this.iitcjs;
+		} else if(url.contains("/css/ap_icons.css")
+				|| url.contains("/css/map_icons.css")
+				|| url.contains("/css/misc_icons.css")
+				|| url.contains("/css/style_full.css")
+				|| url.contains("/css/style_mobile.css")
+				|| url.contains("/css/portalrender.css")
+				|| url.contains("js/analytics.js")
+				|| url.contains("google-analytics.com/ga.js")) {
+			return new WebResourceResponse("text/plain", "UTF-8", empty);
+		} else {
+			return super.shouldInterceptRequest(view, url);
 		}
-	}
-
-	private void addJs(WebView web, String f, int t) {
-		// load plugins using setTimeout to prevent weird timing issues that shouldn't actually exist
-		web.loadUrl("javascript: setTimeout(function() { "
-				+ "var script=document.createElement('script');"
-				+ "script.type='text/javascript';"
-				+ "script.src='iitc://"+f+"';"
-				+ "document.getElementsByTagName('head').item(0).appendChild(script);"
-				+ "}, "+String.valueOf(t)+")");
-	}
-
-	@Override
-	public WebResourceResponse shouldInterceptRequest(WebView view, String url) {
-		// mean hack to make loading local js into the security context of the intel map possible
-		// http://stackoverflow.com/a/5656971
-
-		String scheme = "iitc://";
-		if (url.startsWith(scheme)) {
-			try {
-
-				return new WebResourceResponse(
-						url.endsWith("js") ? "text/javascript" : "text/css",
-						"utf-8",
-						ctx.getAssets().open(url.substring(scheme.length()))
-					);
-			} catch (IOException e) {
-				Log.e(getClass().getSimpleName(), e.getMessage(), e);
-			}
-		}
-		return null;
 	}
 }
