@@ -7,5 +7,6 @@
     <string name="version">Print Version</string>
     <string name="cache_clear">Clear Cache</string>
     <string name="locate">Get Location</string>
+    <string name="select_plugins">Select Plugins</string>
 
 </resources>
